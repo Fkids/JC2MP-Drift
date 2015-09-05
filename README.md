@@ -1,2 +1,2 @@
-# JC2MP-Drift
+# JC2MP Drift!
 Drifting minigame with NetworkObject scoreboard.
