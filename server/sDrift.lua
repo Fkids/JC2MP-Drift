@@ -5,6 +5,7 @@ function sDrift:__init()
 	Events:Subscribe("ModuleLoad", self, self.onModuleLoad)
 	Events:Subscribe("PostTick", self, self.onPostTick)
 	Network:Subscribe("01", self, self.onDriftRecord)
+	Network:Subscribe("02", self, self.onDriftAttempt)
 end
 
 function sDrift:initVars()
@@ -40,6 +41,10 @@ function sDrift:onDriftRecord(score, player)
 	object:SetNetworkValue("N", player:GetName())
 	object:SetNetworkValue("E", 10)
 	self.timer:Restart()
+end
+
+function sDrift:onDriftAttempt(score, player)
+	Network:Broadcast("03", {score, player:GetId() + 1})
 end
 
 sDrift = sDrift()
