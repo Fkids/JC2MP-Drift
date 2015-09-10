@@ -66,12 +66,16 @@ function cDrift:onRender()
 	if vehicle:GetClass() ~= VehicleClass.Land then self.timer = nil; return end
 	local velocity = vehicle:GetLinearVelocity()
 	if velocity:Length() < 20 then self.timer = nil; return end
-	local dot = Vector3.Dot(velocity:Normalized(), vehicle:GetAngle() * Vector3.Forward)
-	if dot < 0.5 or dot > 0.95 then self.timer = nil; return end
+	local dot = Angle.Dot(Angle(Angle.FromVectors(velocity, Vector3.Forward).yaw, 0, 0), Angle(-vehicle:GetAngle().yaw, 0, 0))
+	if dot < 0.8 or dot > 0.99 then self.timer = nil; return end
 	local raycast = Physics:Raycast(vehicle:GetPosition() + Vector3(0, 0.5, 0), Vector3.Down, 0, 10, true)
 	if raycast.distance > 1 then self.timer = nil; return end
-	if not self.timer then self.timer = Timer() end
-	self.score = math.ceil(self.timer:GetMilliseconds())
+	if not self.timer then
+		self.timer = Timer()
+		self.quality = 0
+	end
+	self.quality = math.max(math.lerp(self.quality, -80 * math.pow(dot - 0.9, 2) + 1, 0.1), self.quality)
+	self.score = math.ceil(self.timer:GetMilliseconds() * self.quality)
 	self.slide = 0
 	if self.score < 200 then return end
 	local text = "Drift! " .. tostring(self.score)
