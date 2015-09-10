@@ -2,6 +2,7 @@ class "cDrift"
 
 function cDrift:__init()
 	Events:Subscribe("Render", self, self.onRender)
+	Network:Subscribe("03", self, self.onDriftAttempt)
 end
 
 -- Events
@@ -30,6 +31,21 @@ function cDrift:onRender()
 			Render:DrawText(position + Vector2.One, text, Color(0, 0, 0, 100), 16)
 			Render:DrawText(position, text, Color(255, 255, 255), 16)
 			Render:DrawLine(position + Vector2(3, 2), position + Vector2(Render:GetTextWidth(text, 16) + 1, 2), Color(200, 200, 200, 150))
+			if self.attempt then
+				local player = Player.GetById(self.attempt[2] - 1)
+				if player then
+					position.y = position.y + height * 0.42
+					local alpha = math.min(self.attempt[3], 1)
+					text = tostring(self.attempt[1]) .. " I " .. player:GetName()
+					Render:DrawText(position + Vector2.One, text, Color(0, 0, 0, 100 * alpha), 16)
+					Render:DrawText(position, text, Color(255, 255, 255, 255 * alpha), 16)
+					text = tostring(self.attempt[1])
+					Render:DrawText(position + Vector2.One, text, Color(0, 0, 0, 100 * alpha), 16)
+					Render:DrawText(position, text, Color(240, 220, 70, 255 * alpha), 16)
+					self.attempt[3] = self.attempt[3] - 0.02
+					if self.attempt[3] < 0.02 then self.attempt = nil end
+				end
+			end
 		else
 			text = "–"
 			Render:DrawText(position + Vector2.One, text, Color(0, 0, 0, 100), 16)
@@ -42,6 +58,8 @@ function cDrift:onRender()
 			local object = NetworkObject.GetByName("Drift")
 			if not object or self.score > (object:GetValue("S") or 0) then
 				Network:Send("01", self.score)
+			elseif self.score > ((object:GetValue("S") or 0) * 0.6) and (object:GetValue("N") or "None") ~= LocalPlayer:GetName() then
+				Network:Send("02", self.score)
 			end
 			local shared = SharedObject.Create("Drift")
 			if self.score > (shared:GetValue("Record") or 0) then
@@ -67,23 +85,30 @@ function cDrift:onRender()
 	local velocity = vehicle:GetLinearVelocity()
 	if velocity:Length() < 20 then self.timer = nil; return end
 	local dot = Angle.Dot(Angle(Angle.FromVectors(velocity, Vector3.Forward).yaw, 0, 0), Angle(-vehicle:GetAngle().yaw, 0, 0))
-	if dot < 0.8 or dot > 0.99 then self.timer = nil; return end
+	if dot < 0.7 or dot > 0.99 then self.timer = nil; return end
 	local raycast = Physics:Raycast(vehicle:GetPosition() + Vector3(0, 0.5, 0), Vector3.Down, 0, 10, true)
 	if raycast.distance > 1 then self.timer = nil; return end
 	if not self.timer then
 		self.timer = Timer()
 		self.quality = 0
 	end
-	self.quality = math.max(math.lerp(self.quality, -80 * math.pow(dot - 0.9, 2) + 1, 0.1), self.quality)
-	self.score = math.ceil(self.timer:GetMilliseconds() * self.quality)
+	self.quality = math.max(math.lerp(self.quality, -45 * math.pow(dot - 0.85, 2) + 1, 0.1), self.quality)
+	score = math.ceil(self.timer:GetMilliseconds() * self.quality)
+	if score < 200 then return end
+	self.score = score
 	self.slide = 0
-	if self.score < 200 then return end
 	local text = "Drift! " .. tostring(self.score)
 	local textSize = Render:GetTextSize(text, 36)
 	local position = Vector2(Render.Width / 2, Render.Height * 0.3) - textSize / 2
 	Render:DrawText(position + Vector2.One, text, Color(0, 0, 0, 100), 36)
 	Render:DrawText(position, text, Color(255, 150, 0), 36)
 	Render:DrawText(position + Vector2(Render:GetTextWidth("Drift! ", 36), 0), tostring(self.score), Color(255, 255, 255), 36)
+end
+
+-- Network
+function cDrift:onDriftAttempt(data)
+	self.attempt = data
+	self.attempt[3] = 4
 end
 
 cDrift = cDrift()
